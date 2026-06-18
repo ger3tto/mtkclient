@@ -80,7 +80,7 @@ class DAXFlash(metaclass=LogBase):
 
     @staticmethod
     def usleep(usec):
-        time.sleep(usec / 100000)
+        time.sleep(usec / 1000000)
 
     def ack(self, rstatus=True):
         try:
@@ -143,7 +143,7 @@ class DAXFlash(metaclass=LogBase):
             return -1
         tmp = self.usbread(length)
         if len(tmp) < length:
-            self.error(f"Status length error: Too few data {hex(len(hdr))}")
+            self.error(f"Status length error: Too few data {hex(len(tmp))}")
             return -1
         if length == 2:
             status = unpack("<H", tmp)[0]
@@ -656,7 +656,7 @@ class DAXFlash(metaclass=LogBase):
 
     def set_usb_speed(self):
         resp = self.xsend(self.cmd.SWITCH_USB_SPEED)
-        if resp != b"":
+        if resp is not None and resp != b"":
             status = self.status()
             if status == 0:
                 if self.xsend(pack("<I", 0x0E8D2001)):

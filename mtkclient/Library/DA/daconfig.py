@@ -158,7 +158,12 @@ class DAconfig(metaclass=LogBase):
                 self.error(f"Preloader : {preloader} doesn't exist. Aborting.")
                 exit(1)
         try:
-            self.emiver, self.emi = self.m_extract_emi(data)
+            result = self.m_extract_emi(data)
+            if result is not None:
+                self.emiver, self.emi = result
+            else:
+                self.emiver = 0
+                self.emi = None
         except Exception:
             self.emiver = 0
             self.emi = None
@@ -193,7 +198,7 @@ class DAconfig(metaclass=LogBase):
                             found = False
                             if da.hw_version == ldr.hw_version:
                                 if da.sw_version == ldr.sw_version:
-                                    if da.hw_sub_code == da.hw_sub_code:
+                                    if da.hw_sub_code == ldr.hw_sub_code:
                                         found = True
                                         break
                         if not found:

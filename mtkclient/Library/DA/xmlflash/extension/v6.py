@@ -25,7 +25,7 @@ from mtkclient.Library.utils import MTKTee
 from mtkclient.Library.Exploit.exptools.aarch_tools import Aarch64Tools
 
 rpmb_error = [
-    "",
+    0,
     "General failure",
     "Authentication failure",
     "Counter failure",
@@ -246,6 +246,7 @@ class XmlFlashExt(metaclass=LogBase):
                 register_xml_cmd = self.find_register_xml_cmd_func()
 
                 # UFS
+                g_ufs_hba = None
                 ufs_controller_enable_offset = self.archtools.find_function_from_string("Controller enable failed\n")
                 instr = int.from_bytes(self.da2[ufs_controller_enable_offset + 0xC:ufs_controller_enable_offset + 0x10],
                                        'little')
@@ -316,6 +317,7 @@ class XmlFlashExt(metaclass=LogBase):
                     ufshcd_queuecommand = self.archtools.get_bl_target(ufshcd_queuecommand_ptr2)
                 assert ufshcd_queuecommand is not None, "No ufshcd_queuecommand found"
 
+                g_ufs_hba = None
                 ufs_controller_enable_offset = self.archtools.find_function_from_string("Controller enable failed\n")
                 if ufs_controller_enable_offset is not None:
                     instr = int.from_bytes(
@@ -475,7 +477,7 @@ class XmlFlashExt(metaclass=LogBase):
             if read_write_ptr:
                 # Search for LDR R0, [R9]
                 idx2 = find_binary(da2patched, b"\x00\x00\x99\xE5", read_write_ptr)
-                if idx2 != -1:
+                if idx2 is not None:
                     check_allow_ptr = self.archtools.get_previous_bl_from_off(idx2)
                     allow_write_func = self.archtools.get_bl_target(check_allow_ptr)
                     if allow_write_func:
@@ -990,7 +992,7 @@ class XmlFlashExt(metaclass=LogBase):
             value = data[i:i + 4]
             while len(value) < 4:
                 value += b"\x00"
-            self.writeregister(addr + i, unpack("<I", value))
+            self.writeregister(addr + i, unpack("<I", value)[0])
         return True
 
     def cryptosetup(self):
@@ -1107,7 +1109,8 @@ class XmlFlashExt(metaclass=LogBase):
                     mt.parse(data[idx:])
                     rdata = hwc.mtee(data=mt.data, keyseed=mt.keyseed, ivseed=mt.ivseed,
                                      aeskey1=aeskey1, aeskey2=aeskey2)
-                    open("tee_" + hex(idx) + ".dec", "wb").write(rdata)
+                    with open("tee_" + hex(idx) + ".dec", "wb") as f:
+                        f.write(rdata)
 
     def protect(self, data):
         return data
@@ -1144,7 +1147,7 @@ class XmlFlashExt(metaclass=LogBase):
             if display:
                 print("SW Encrypted")
             swcrypt = 1
-            if len(aeskey) == 0x20:
+            if aeskey is not None and len(aeskey) == 0x20:
                 swcrypt = 1
         if attr & 0x20:
             if display:
@@ -1233,7 +1236,7 @@ class XmlFlashExt(metaclass=LogBase):
             for idx in range(len(efuseconfig.efuses)):
                 addr = efuseconfig.efuses[idx]
                 if addr < 0x1000:
-                    return data.append(int.to_bytes(addr, 4, 'little'))
+                    data.append(int.to_bytes(addr, 4, 'little'))
                 else:
                     data.append(bytearray(self.mtk.daloader.peek(addr=addr, length=4, registers=True)))
             return data
@@ -1393,22 +1396,23 @@ class XmlFlashExt(metaclass=LogBase):
                 retval["provkey"] = provkey.hex()
 
             ctx = self.xflash.get_dev_info()
-            if "socid" in ctx:
-                if "socid" not in retval:
-                    retval["socid"] = ctx["socid"].hex()
-            if "rid" in ctx:
-                retval["cid"] = ctx["rid"].hex()
-            if "hrid" in ctx:
-                retval["hrid"] = ctx["hrid"].hex()
-            else:
-                val = self.read_fuse(0xC)
-                if val is not None:
-                    val += self.read_fuse(0xD)
-                    val += self.read_fuse(0xE)
-                    val += self.read_fuse(0xF)
-                    self.info(f"HRID        : {val.hex()}")
-                    self.config.hwparam.writesetting("hrid", val.hex())
-                    retval["hrid"] = val.hex()
+            if ctx is not False and ctx is not None:
+                if "socid" in ctx:
+                    if "socid" not in retval:
+                        retval["socid"] = ctx["socid"].hex()
+                if "rid" in ctx:
+                    retval["cid"] = ctx["rid"].hex()
+                if "hrid" in ctx:
+                    retval["hrid"] = ctx["hrid"].hex()
+                else:
+                    val = self.read_fuse(0xC)
+                    if val is not None:
+                        val += self.read_fuse(0xD)
+                        val += self.read_fuse(0xE)
+                        val += self.read_fuse(0xF)
+                        self.info(f"HRID        : {val.hex()}")
+                        self.config.hwparam.writesetting("hrid", val.hex())
+                        retval["hrid"] = val.hex()
             if "hrid" in retval:
                 hrid = bytes.fromhex(retval["hrid"])
                 hrid_md5 = hashlib.md5(hrid + hrid).hexdigest()

@@ -75,7 +75,8 @@ class XFlashExt(metaclass=LogBase):
         self.da2address = self.xflash.daconfig.da_loader.region[2].m_start_addr  # at_address
         daextensions = os.path.join(self.pathconfig.get_payloads_path(), "da_x.bin")
         if os.path.exists(daextensions):
-            daextdata = bytearray(open(daextensions, "rb").read())
+            with open(daextensions, "rb") as f:
+                daextdata = bytearray(f.read())
 
             register_devctrl = find_binary(self.da2, b"\x38\xB5\x05\x46\x0C\x20")
 
@@ -137,29 +138,29 @@ class XFlashExt(metaclass=LogBase):
             efuse_addr_ptr = daextdata.find(b"\x88\x88\x88\x88")
 
             if register_ptr != -1 and mmc_get_card_ptr != -1:
-                if register_devctrl:
+                if register_devctrl is not None:
                     register_devctrl = register_devctrl + self.da2address | 1
                 else:
                     register_devctrl = 0
-                if mmc_get_card:
+                if mmc_get_card is not None:
                     mmc_get_card = mmc_get_card + self.da2address | 1
                 else:
                     mmc_get_card = 0
-                if mmc_set_part_config:
+                if mmc_set_part_config is not None:
                     mmc_set_part_config = mmc_set_part_config + self.da2address | 1
                 else:
                     mmc_set_part_config = 0
-                if mmc_rpmb_send_command:
+                if mmc_rpmb_send_command is not None:
                     mmc_rpmb_send_command = mmc_rpmb_send_command + self.da2address | 1
                 else:
                     mmc_rpmb_send_command = 0
 
-                if ufshcd_get_free_tag:
-                    ufshcd_get_free_tag = ufshcd_get_free_tag + (self.da2address - 1) | 1
+                if ufshcd_get_free_tag is not None:
+                    ufshcd_get_free_tag = ufshcd_get_free_tag + self.da2address | 1
                 else:
                     ufshcd_get_free_tag = 0
 
-                if ufshcd_queuecommand:
+                if ufshcd_queuecommand is not None:
                     ufshcd_queuecommand = ufshcd_queuecommand + self.da2address | 1
                 else:
                     ufshcd_queuecommand = 0
@@ -269,15 +270,15 @@ class XFlashExt(metaclass=LogBase):
 
         # Patch hash check cmd_boot_to
         authaddr = find_binary(da2, int.to_bytes(0xC0070004, 4, 'little'))
-        if authaddr:
+        if authaddr is not None:
             da2patched[authaddr:authaddr + 4] = int.to_bytes(0, 4, 'little')
-        elif authaddr is None:
+        else:
             authaddr = find_binary(da2, b"\x4F\xF0\x04\x09\xCC\xF2\x07\x09")
-            if authaddr:
+            if authaddr is not None:
                 da2patched[authaddr:authaddr + 8] = b"\x4F\xF0\x00\x09\x4F\xF0\x00\x09"
             else:
                 authaddr = find_binary(da2, b"\x4F\xF0\x04\x09\x32\x46\x01\x98\x03\x99\xCC\xF2\x07\x09")
-                if authaddr:
+                if authaddr is not None:
                     da2patched[authaddr:authaddr + 14] = b"\x4F\xF0\x00\x09\x32\x46\x01\x98\x03\x99\x4F\xF0\x00\x09"
                 else:
                     self.warning("Hash check not patched.")
@@ -477,7 +478,7 @@ class XFlashExt(metaclass=LogBase):
                 tmp = self.xread()
                 if len(tmp) != 0x100:
                     resp = int.from_bytes(tmp, 'little')
-                    if resp in rpmb_error:
+                    if resp < len(rpmb_error):
                         msg = rpmb_error[resp]
                     else:
                         msg = f"Error: {hex(resp)}"
@@ -503,7 +504,7 @@ class XFlashExt(metaclass=LogBase):
                 self.xsend(data[i * 0x100:(i * 0x100) + 0x100])
                 resp = unpack("<H", self.xread())[0]
                 if resp != 0:
-                    if resp in rpmb_error:
+                    if resp < len(rpmb_error):
                         self.error(rpmb_error[resp])
                         status = self.status()
                         return False
@@ -546,7 +547,7 @@ class XFlashExt(metaclass=LogBase):
                     self.info("Derived rpmb key: " + derivedrpmb.hex())
                     return True
             else:
-                if status in rpmb_error:
+                if status < len(rpmb_error):
                     print(rpmb_error[status])
                     return False
                 elif status == 0xfffe:
@@ -658,7 +659,7 @@ class XFlashExt(metaclass=LogBase):
         # val = self.custom_rpmb_init()
         if sector is None:
             sector = 0
-        if sectors == 0:
+        if sectors is None:
             if self.mtk.daloader.daconfig.storage.flashtype == "emmc":
                 sectors = self.xflash.emmc.rpmb_size // 0x100
             elif self.mtk.daloader.daconfig.storage.flashtype == "ufs":
@@ -695,7 +696,7 @@ class XFlashExt(metaclass=LogBase):
         if not os.path.exists(filename):
             self.error(f"Couldn't find {filename} for writing to rpmb.")
             return False
-        if sectors == 0:
+        if sectors is None:
             if self.mtk.daloader.daconfig.storage.flashtype == "emmc":
                 max_sector_size = self.xflash.emmc.rpmb_size // 0x100
             elif self.mtk.daloader.daconfig.storage.flashtype == "ufs":

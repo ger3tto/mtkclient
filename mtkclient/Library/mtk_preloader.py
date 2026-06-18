@@ -98,12 +98,12 @@ class Preloader(metaclass=LogBase):
         SEND_ENV_PREPARE = b"\xD9"
         brom_register_access = b"\xDA"
         UART1_LOG_EN = b"\xDB"
-        UART1_SET_BAUDRATE = b"\xDC",  # RE
-        BROM_DEBUGLOG = b"\xDD",  # RE
-        JUMP_DA64 = b"\xDE",  # RE
-        GET_BROM_LOG_NEW = b"\xDF",  # RE
+        UART1_SET_BAUDRATE = b"\xDC"  # RE
+        BROM_DEBUGLOG = b"\xDD"  # RE
+        JUMP_DA64 = b"\xDE"  # RE
+        GET_BROM_LOG_NEW = b"\xDF"  # RE
 
-        SEND_CERT = b"\xE0",  # DA_CHK_PC_SEC_INFO_CMD
+        SEND_CERT = b"\xE0"  # DA_CHK_PC_SEC_INFO_CMD
         GET_ME_ID = b"\xE1"
         SEND_AUTH = b"\xE2"
         SLA = b"\xE3"
@@ -183,7 +183,7 @@ class Preloader(metaclass=LogBase):
             self.config.hwver = self.read_a2(0x80000000)
             self.config.hwcode = self.read_a2(0x80000008)
             self.config.hw_sub_code = self.read_a2(0x8000000C)
-            self.config.swver = (self.read32(0xA01C0108) & 0xFFFF0000) >> 16
+            self.config.swver = (self.read32(0xA01C0108)[0] & 0xFFFF0000) >> 16
             self.config.iot = True
             self.info("Detected iot mode !")
         else:
@@ -452,7 +452,7 @@ class Preloader(metaclass=LogBase):
             value = data[i:i + 4]
             while len(value) < 4:
                 value += b"\x00"
-            self.write32(addr + i, unpack("<I", value))
+            self.write32(addr + i, unpack("<I", value)[0])
 
     def reset_to_brom(self, en=True, timeout=0):
         usbdlreg = 0
@@ -988,12 +988,12 @@ class Preloader(metaclass=LogBase):
     def prepare_data(data, sigdata=b"", maxsize=0):
         gen_chksum = 0
         data = (data[:maxsize] + sigdata)
-        if len(data + sigdata) % 2 != 0:
+        if len(data) % 2 != 0:
             data += b"\x00"
         for x in range(0, len(data), 2):
             gen_chksum ^= unpack("<H", data[x:x + 2])[0]  # 3CDC
         if len(data) & 1 != 0:
-            gen_chksum ^= data[-1:]
+            gen_chksum ^= data[-1]
         return gen_chksum, data
 
     def upload_data(self, data, gen_chksum):

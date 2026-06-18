@@ -28,7 +28,6 @@ class ConfigInfoIoT:
         res += "m_ext_ram_ret = 0x%X\n" % self.m_ext_ram_ret
         res += "m_ext_ram_type = 0x%X\n" % self.m_ext_ram_type
         res += "m_ext_ram_chip_select = 0x%X\n" % self.m_ext_ram_chip_select
-        res += "m_int_sram_ret = 0x%X\n" % self.m_int_sram_ret
         res += f"m_ext_ram_size = {hex(self.m_ext_ram_size)}\n"
         res += f"sf_candidate = {self.sf_candidate.hex()}\n"
         return res
@@ -199,11 +198,11 @@ class NorInfoIoT:
         res += f"m_nor_flash_dev_code = {hexlify(val).decode('utf-8')}\n"
         res += f"m_nor_flash_otp_status = {hex(self.m_nor_flash_otp_status)}\n"
         res += f"m_nor_flash_otp_size = {hex(self.m_nor_flash_otp_size)}\n"
-        res += f"m_nor_flash_id_die2 = {hex(self.m_nor_flash_id)}\n"
-        res += f"m_nor_flash_size_die2 = {hex(self.m_nor_flash_size)}\n"
-        val = pack("<HHHH", self.m_nor_flash_dev_code[0], self.m_nor_flash_dev_code[1], self.m_nor_flash_dev_code[2],
-                   self.m_nor_flash_dev_code[3])
+        res += f"m_nor_flash_id_die2 = {hex(self.m_nor_flash_id_die2)}\n"
+        res += f"m_nor_flash_size_die2 = {hex(self.m_nor_flash_size_die2)}\n"
+        val = pack("<HHHH", self.m_nor_flash_dev_code_die2[0], self.m_nor_flash_dev_code_die2[1], self.m_nor_flash_dev_code_die2[2],
+                   self.m_nor_flash_dev_code_die2[3])
         res += f"m_nor_flash_dev_code_die2 = {hexlify(val).decode('utf-8')}\n"
-        res += f"m_nor_flash_otp_status_die2 = {hex(self.m_nor_flash_otp_status)}\n"
-        res += f"m_nor_flash_otp_size_die2 = {hex(self.m_nor_flash_otp_size)}\n"
+        res += f"m_nor_flash_otp_status_die2 = {hex(self.m_nor_flash_otp_status_die2)}\n"
+        res += f"m_nor_flash_otp_size_die2 = {hex(self.m_nor_flash_otp_size_die2)}\n"
         return res

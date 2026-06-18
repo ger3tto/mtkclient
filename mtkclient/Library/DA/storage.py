@@ -55,7 +55,7 @@ class Memory:
 
 
 class NandCellUsage:
-    CELL_UNI = 0,
+    CELL_UNI = 0
     CELL_BINARY = 1
     CELL_TRI = 2
     CELL_QUAD = 3
@@ -286,7 +286,7 @@ class Storage(metaclass=LogBase):
             else:
                 self.error(
                     "Unknown parttype. Known parttypes are \"boot1\",\"boot2\",\"gp1\",\"gp2\",\"gp3\",\"gp4\",\"rpmb\"")
-                return []
+                return [None, None, 0]
         elif storage == DaStorage.MTK_DA_STORAGE_UFS:
             if parttype == "user" or parttype is None:
                 if not xml:
@@ -337,7 +337,7 @@ class Storage(metaclass=LogBase):
                     self.flashsize = self.ufs.lu3_size
                 else:
                     self.error("Unknown parttype. Known parttypes are \"lu1\",\"lu2\",\"lu3\",\"lu4\"")
-                    return []
+                    return [None, None, 0]
         elif storage in [DaStorage.MTK_DA_STORAGE_NAND, DaStorage.MTK_DA_STORAGE_NAND_MLC,
                          DaStorage.MTK_DA_STORAGE_NAND_SLC, DaStorage.MTK_DA_STORAGE_NAND_TLC,
                          DaStorage.MTK_DA_STORAGE_NAND_SPI, DaStorage.MTK_DA_STORAGE_NAND_AMLC]:

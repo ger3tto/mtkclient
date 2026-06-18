@@ -97,8 +97,8 @@ class ArgHandler(metaclass=LogBase):
             pass
         try:
             if args.watchdog_address is not None:
-                config.chipconfig.watchdog = getint(args.wdt)
-                self.info("O:Watchdog addr:\t\t" + args.wdt)
+                config.chipconfig.watchdog = getint(args.watchdog_address)
+                self.info("O:Watchdog addr:\t\t" + args.watchdog_address)
         except AttributeError:
             pass
         try:
@@ -122,7 +122,8 @@ class ArgHandler(metaclass=LogBase):
             if args.preloader is not None:
                 if os.path.exists(args.preloader):
                     config.preloader_filename = args.preloader
-                    config.preloader = open(config.preloader_filename, "rb").read()
+                    with open(config.preloader_filename, "rb") as f:
+                        config.preloader = f.read()
         except AttributeError:
             pass
         try:
@@ -235,7 +236,7 @@ class Main(metaclass=LogBase):
                     bytestowrite = len(stage2data)
                     pos = 0
                     while bytestowrite > 0:
-                        size = min(bytestowrite, 1)
+                        size = min(bytestowrite, 0x1000)
                         if mtk.port.usbwrite(stage2data[pos:pos + size]):
                             bytestowrite -= size
                             pos += size
@@ -255,7 +256,7 @@ class Main(metaclass=LogBase):
                         mtk.port.usbwrite(pack(">I", len(stage2data)))
                         bytestoread = len(stage2data)
                         while bytestoread > 0:
-                            size = min(bytestoread, 1)
+                            size = min(bytestoread, 0x1000)
                             rdata += mtk.port.usbread(size)
                             bytestoread -= size
                         flag = mtk.port.rdword()
@@ -333,7 +334,7 @@ class Main(metaclass=LogBase):
             while dwords:
                 size = min(512 // 4, dwords)
                 if dwords == 1:
-                    data = pack("<I", mtk.preloader.read32(addr + pos, size))
+                    data = pack("<I", mtk.preloader.read32(addr + pos, size)[0])
                 else:
                     data = b"".join(int.to_bytes(val, 4, 'little') for val in mtk.preloader.read32(addr + pos, size))
                 pg.update(len(data))
@@ -430,7 +431,8 @@ class Main(metaclass=LogBase):
                 self.error("Couldn't find script: " + self.args.script)
                 self.close()
                 return
-            commands = open(self.args.script, "r").read().splitlines()
+            with open(self.args.script, "r") as f:
+                commands = f.read().splitlines()
             da_handler = DaHandler(mtk, loglevel)
             mtk = da_handler.connect(mtk, directory)
             if mtk is None:
@@ -550,6 +552,9 @@ class Main(metaclass=LogBase):
                         pldata = mtk.patch_preloader_security_da1(rf.read())
                     else:
                         pldata = rf.read()
+            else:
+                self.error("Couldn't find plstage: " + plstage)
+                return
             if mtk.preloader.init():
                 if mtk.config.target_config["daa"]:
                     mtk = mtk.bypass_security()

@@ -102,9 +102,9 @@ class DALegacy(metaclass=LogBase):
 
     def read_pmt(self) -> tuple:  # A5
         class GptEntries:
-            partentries = []
 
             def __init__(self, sectorsize, totalsectors):
+                self.partentries = []
                 self.sectorsize = sectorsize
                 self.totalsectors = totalsectors
 
@@ -149,7 +149,7 @@ class DALegacy(metaclass=LogBase):
                                 p.unique = b""
                                 gpt.partentries.append(p)
                         else:
-                            mask_flags = unpack("<Q", partdata[0x48:0x4C])[0]
+                            mask_flags = unpack("<I", partdata[0x48:0x4C])[0]
                             if 0xA > mask_flags > 0:
                                 # 64Bit
                                 for pos in range(0, datalength, 0x58):
@@ -169,9 +169,9 @@ class DALegacy(metaclass=LogBase):
                                 # 32Bit
                                 for pos in range(0, datalength, 0x4C):
                                     partname = partdata[pos:pos + 0x40]
-                                    size = unpack("<Q", partdata[pos + 0x40:pos + 0x44])[0]
-                                    offset = unpack("<Q", partdata[pos + 0x44:pos + 0x48])[0]
-                                    mask_flags = unpack("<Q", partdata[pos + 0x48:pos + 0x4C])[0]
+                                    size = unpack("<I", partdata[pos + 0x40:pos + 0x44])[0]
+                                    offset = unpack("<I", partdata[pos + 0x44:pos + 0x48])[0]
+                                    mask_flags = unpack("<I", partdata[pos + 0x48:pos + 0x4C])[0]
                                     p = PartitionLegacy()
                                     p.name = partname
                                     p.type = 1
@@ -197,7 +197,7 @@ class DALegacy(metaclass=LogBase):
             if ack == self.Rsp.ACK:
                 self.usbwrite(pack(">B", partition))
                 res = self.usbread(1)
-                return not res < 0
+                return res == self.Rsp.ACK[0]
         return False
 
     def check_security(self):
@@ -649,7 +649,7 @@ class DALegacy(metaclass=LogBase):
                             self.daconfig.storage.flashsize = self.daconfig.legacy_storage.nor.m_nor_flash_size
                         self.info("Connected to stage2")
                         speed = self.check_usb_cmd()
-                        if speed[0] == 0 and self.daconfig.reconnect:  # 1 = USB High Speed, 2= USB Ultra high speed
+                        if speed is not None and speed[0] == 0 and self.daconfig.reconnect:  # 1 = USB High Speed, 2= USB Ultra high speed
                             self.info("Reconnecting to stage2 with higher speed")
                             self.config.set_gui_status(self.config.tr("Reconnecting to stage2 with higher speed"))
                             self.set_usb_cmd()
@@ -972,10 +972,10 @@ class DALegacy(metaclass=LogBase):
     def finish(self, value):
         self.usbwrite(self.Cmd.FINISH_CMD)  # D9
         ack = self.usbread(1)[0]
-        if ack is self.Rsp.ACK:
+        if ack == self.Rsp.ACK[0]:
             self.usbwrite(pack(">I", value))
             ack = self.usbread(1)[0]
-            if ack is self.Rsp.ACK:
+            if ack == self.Rsp.ACK[0]:
                 return True
         return False
 
@@ -1061,7 +1061,7 @@ class DALegacy(metaclass=LogBase):
                 while bytestowrite > 0:
                     size = min(bytestowrite, packetsize)
                     for i in range(0, size, 0x400):
-                        data = bytearray(rf.read(size))
+                        data = bytearray(rf.read(min(0x400, size - i)))
                         if self.usbwrite(data):
                             bytestowrite -= size
                             if bytestowrite == 0:
@@ -1160,7 +1160,7 @@ class DALegacy(metaclass=LogBase):
             self.usbwrite(pack(">I", length))
             self.usbwrite(pack(">I", 0))
             ack = self.usbread(1)[0]
-            if ack is not self.Rsp.ACK:
+            if ack != self.Rsp.ACK[0]:
                 self.error(f"Error on sending nand read command, response: {hex(ack)}")
                 exit(1)
             self.daconfig.pagesize = unpack(">I", self.usbread(4))[0]
@@ -1224,7 +1224,7 @@ class DALegacy(metaclass=LogBase):
                 if bytestoread > packetsize:
                     size = packetsize
                 buffer.extend(self.usbread(size, w_max_packet_size=size))
-                bytestoread = len(buffer) - length
+                bytestoread = length - len(buffer)
                 checksum = unpack(">H", self.usbread(2))[0]
                 self.debug("Checksum: %04X" % checksum)
                 self.usbwrite(self.Rsp.ACK)

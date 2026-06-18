@@ -16,7 +16,8 @@ def init(preloader, loader, serialport=None):
     if preloader is not None:
         if os.path.exists(preloader):
             config.preloader_filename = preloader
-            config.preloader = open(config.preloader_filename, "rb").read()
+            with open(config.preloader_filename, "rb") as f:
+                config.preloader = f.read()
     mtk = Mtk(config=config, loglevel=loglevel, serialportname=serialport)
     return mtk
 
@@ -33,6 +34,9 @@ def connect(mtk, directory=".", loglevel=logging.INFO):
 def main():
     mtk=init(preloader=None, loader=None)
     mtk, da_handler = connect(mtk=mtk, directory=".")
+    if da_handler is None:
+        print("da_handler is None")
+        return
     data=da_handler.da_rs(start=0,sectors=0x4000,filename="",parttype="user",display=False)
     print(data.hex())
 

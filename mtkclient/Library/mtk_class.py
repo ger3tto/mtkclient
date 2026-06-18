@@ -61,7 +61,7 @@ class Mtk(metaclass=LogBase):
                 if idx is None:
                     idx = -1
                 else:
-                    data[idx:idx + len(patchval)] = patchval
+                    data[idx:idx + len(patchval[1])] = patchval[1]
                     self.info(f'Patched "{patchval[2]}" in preloader')
                     patched = True
             else:

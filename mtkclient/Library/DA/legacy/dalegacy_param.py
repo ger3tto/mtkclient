@@ -142,16 +142,16 @@ class Rsp:
 
 
 class PortValues:
-    UART_BAUD_921600 = b'\x01',
-    UART_BAUD_460800 = b'\x02',
-    UART_BAUD_230400 = b'\x03',
-    UART_BAUD_115200 = b'\x04',
-    UART_BAUD_57600 = b'\x05',
-    UART_BAUD_38400 = b'\x06',
-    UART_BAUD_19200 = b'\x07',
-    UART_BAUD_9600 = b'\x08',
-    UART_BAUD_4800 = b'\x09',
-    UART_BAUD_2400 = b'\x0a',
-    UART_BAUD_1200 = b'\x0b',
-    UART_BAUD_300 = b'\x0c',
+    UART_BAUD_921600 = b'\x01'
+    UART_BAUD_460800 = b'\x02'
+    UART_BAUD_230400 = b'\x03'
+    UART_BAUD_115200 = b'\x04'
+    UART_BAUD_57600 = b'\x05'
+    UART_BAUD_38400 = b'\x06'
+    UART_BAUD_19200 = b'\x07'
+    UART_BAUD_9600 = b'\x08'
+    UART_BAUD_4800 = b'\x09'
+    UART_BAUD_2400 = b'\x0a'
+    UART_BAUD_1200 = b'\x0b'
+    UART_BAUD_300 = b'\x0c'
     UART_BAUD_110 = b'\x0d'

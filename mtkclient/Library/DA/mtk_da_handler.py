@@ -410,7 +410,7 @@ class DaHandler(metaclass=LogBase):
 
         sfilename = os.path.join(storedir, "gpt_backup.bin")
         with open(sfilename, "wb") as wf:
-            wf.write(data)
+            wf.write(data[self.mtk.daloader.daconfig.pagesize:])
 
         count_gpt = 0
         for partition in guid_gpt.partentries:
@@ -670,9 +670,9 @@ class DaHandler(metaclass=LogBase):
                 print(
                     f"Formatted {parttype}.")
                 count_fp += 1
-        if count_fp == len(partitions) and count_fp > 1:
+        if count_fp == len(partitions):
             print("All partitions formatted.")
-        elif count_fp != len(partitions) and count_fp > 1:
+        elif count_fp != len(partitions):
             print("Failed to format all partitions.")
 
     def da_ess(self, sector: int, sectors: int, parttype: str):
@@ -682,7 +682,7 @@ class DaHandler(metaclass=LogBase):
             while sectors:
                 sectorsize = sectors * self.config.pagesize
                 wsize = min(sectorsize, 0x200000)
-                if self.mtk.daloader.writeflash(addr=sector * self.config.pagesize,
+                if not self.mtk.daloader.writeflash(addr=sector * self.config.pagesize,
                                                 length=wsize,
                                                 filename="",
                                                 wdata=wipedata[:wsize],
@@ -696,7 +696,8 @@ class DaHandler(metaclass=LogBase):
                 sector += (wsize // self.config.pagesize)
             if not error:
                 print(
-                    f"Formatted sector {str(sector)} with sector count {str(sectors)}.")
+                    f"Formatted sector {str(sector - (wsize // self.config.pagesize))} with " +
+                    f"sector count {str(sector - (wsize // self.config.pagesize))}.")
         else:
             pos = 0
             self.mtk.daloader.formatflash(addr=sector * self.config.pagesize,
@@ -723,10 +724,11 @@ class DaHandler(metaclass=LogBase):
                     wipedata = b"\x00" * 0x200000
                     error = False
                     sector = rpartition.sector
+                    start_sector = rpartition.sector
                     while sectors:
                         sectorsize = sectors * self.mtk.daloader.daconfig.pagesize
                         wsize = min(sectorsize, 0x200000)
-                        if self.mtk.daloader.writeflash(addr=sector * self.config.pagesize,
+                        if not self.mtk.daloader.writeflash(addr=sector * self.config.pagesize,
                                                         length=wsize,
                                                         filename="",
                                                         wdata=wipedata[:wsize],
@@ -740,8 +742,8 @@ class DaHandler(metaclass=LogBase):
                         sector += (wsize // self.config.pagesize)
                     if not error:
                         print(
-                            f"Formatted sector {str(rpartition.sector)} with " +
-                            f"sector count {str(sectors)}.")
+                            f"Formatted sector {str(start_sector)} with " +
+                            f"sector count {str(sector - start_sector)}.")
                 else:
                     self.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
                     for rpartition in res[1]:
@@ -786,7 +788,7 @@ class DaHandler(metaclass=LogBase):
     def efuse_wait_for_mask(self, mask, value, timeout):
         if self.mtk.config.chipconfig.efuse_addr is not None:
             base = self.mtk.config.chipconfig.efuse_addr
-            while value != (self.mtk.daloader.peek(base) & mask):
+            while value != (self.mtk.daloader.peek(base, 4, registers=True) & mask):
                 timeout -= 1
                 if timeout <= 0:
                     return 0x1000000
@@ -799,7 +801,7 @@ class DaHandler(metaclass=LogBase):
                 value = 0
             else:
                 value = 0x6B32970A
-            self.mtk.daloader.poke(base + 8, value)
+            self.mtk.daloader.poke(base + 8, pack("<I", value))
             if self.efuse_wait_for_mask(2, 0, 4096) == 0:
                 return True
         return False
@@ -855,8 +857,7 @@ class DaHandler(metaclass=LogBase):
         reg_rdata = 0
         # Check whether INIT_DONE is set
         if pmifid == 0:
-            reg_rdata = peek(PMIF_SPI_PMIF_SWINF_0_STA + 0x40 * swinf_no)
-        return 0, reg_rdata
+            reg_rdata = peek(PMIF_SPI_PMIF_SWINF_0_STA + 0x40 * swinf_no, length=4, registers=True)
 
         def GET_SWINF_2_INIT_DONE(x):
             return ((x >> 15) & 0x00000001) & 0xFFFFFFFF
@@ -1021,7 +1022,7 @@ class DaHandler(metaclass=LogBase):
     def efuse_reinit(self):
         if self.mtk.config.chipconfig.efuse_addr is not None:
             base = self.mtk.config.chipconfig.efuse_addr
-            self.mtk.daloader.poke(base, self.mtk.daloader.peek(base) | 4)
+            self.mtk.daloader.poke(base, pack("<I", self.mtk.daloader.peek(base, 4, registers=True) | 4))
             if self.efuse_wait_for_mask(1, 1, 0x100000) == 0:
                 return True
         return False
@@ -1039,7 +1040,7 @@ class DaHandler(metaclass=LogBase):
     def efuse_write_macro(self, addr, value):
         ret = self.efuse_wait_for_mask(2, 0, 0x1000)
         if not ret:
-            self.mtk.daloader.poke(addr, value)
+            self.mtk.daloader.poke(addr, pack("<I", value))
             return self.efuse_wait_for_mask(2, 0, 0x1000)
         return ret
 
@@ -1099,9 +1100,9 @@ class DaHandler(metaclass=LogBase):
                     print("[Run-Time] MECC_WRITE: idx[0x%x], data[0x%x]\n" % (idx, value2))
                     ret = self.efuse_write_macro(addr2, value2)
             if ret:
-                print("This field can only be blown once!")
-            else:
                 print("Blow fail !")
+            else:
+                print("This field can only be blown once!")
             if self.efuse_fsource_is_enabled():
                 self.efuse_fsource_close()
             self.efuse_blow_protect(1)

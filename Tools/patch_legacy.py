@@ -54,7 +54,7 @@ def fix_hash(da1, da2, hashpos, hashmode):
     dahash = None
     if hashmode == 0:
         dahash = hashlib.md5(da2).digest()
-    if hashmode == 1:
+    elif hashmode == 1:
         dahash = hashlib.sha1(da2).digest()
     elif hashmode == 2:
         dahash = hashlib.sha256(da2).digest()

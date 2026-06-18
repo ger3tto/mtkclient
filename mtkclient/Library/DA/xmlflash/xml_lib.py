@@ -228,8 +228,8 @@ class DAXML(metaclass=LogBase):
             try:
                 return data.rstrip(b"\x00").decode('utf-8', errors='replace')
             except Exception:
-                return ""
-        return ""
+                return b""
+        return b""
 
     def get_response_data(self) -> bytes:
         datatype, length = self.xread()
@@ -906,7 +906,7 @@ class DAXML(metaclass=LogBase):
                     if name != '':
                         start = get_field(item, "start")
                         rsize = get_field(item, "size")
-                        if size == "":
+                        if rsize == "":
                             continue
                         rsize = int(rsize, 16)
                         start = int(start, 16)
@@ -938,7 +938,7 @@ class DAXML(metaclass=LogBase):
             return False
         else:
             self.error("Read flash isn't supported")
-            sys.exit(1)
+            return b""
 
     def writeflash(self, addr, length, filename, offset=0, parttype=None, wdata=None, display=True):
         fh = None

@@ -52,7 +52,6 @@ class Legacy_ConfigInfo:
         res += "m_ext_ram_ret = 0x%X\n" % self.m_ext_ram_ret
         res += "m_ext_ram_type = 0x%X\n" % self.m_ext_ram_type
         res += "m_ext_ram_chip_select = 0x%X\n" % self.m_ext_ram_chip_select
-        res += "m_int_sram_ret = 0x%X\n" % self.m_int_sram_ret
         res += f"m_ext_ram_size = {hex(self.m_ext_ram_size)}\n"
         res += "randomid = 0x%X%X\n" % (self.randomid[0], self.randomid[1])
         return res
@@ -220,5 +219,4 @@ class Legacy_NorInfo:
         res += f"m_nor_flash_otp_status = {hex(self.m_nor_flash_otp_status)}\n"
         res += f"m_nor_flash_otp_size = {hex(self.m_nor_flash_otp_size)}\n"
 
-        res += f"m_sdmmc_cid = {hexlify(val).decode('utf-8')}\n"
         return res
