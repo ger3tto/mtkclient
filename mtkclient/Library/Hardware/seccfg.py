@@ -208,9 +208,9 @@ class RomType:
 
 
 class SecImgAttr:
-    ATTR_SEC_IMG_UPDATE = 0x10,
-    ATTR_SEC_IMG_COMPLETE = 0x43434343,  # CCCC
-    ATTR_SEC_IMG_INCOMPLETE = 0x49494949,  # IIII
+    ATTR_SEC_IMG_UPDATE = 0x10
+    ATTR_SEC_IMG_COMPLETE = 0x43434343  # CCCC
+    ATTR_SEC_IMG_INCOMPLETE = 0x49494949  # IIII
     ATTR_SEC_IMG_FORCE_UPDATE = 0x46464646  # FFFF
 
 
@@ -256,6 +256,8 @@ class SecCfgV3(metaclass=LogBase):
             idx = self.mtk.config.preloader.find(b"\x4D\x4D\x4D\x01\x30")
             if idx != -1:
                 otp = self.mtk.config.preloader[idx + 0xC:idx + 0xC + 32]
+                if len(otp) < 32:
+                    otp = otp + b"\x00" * (32 - len(otp))
         if otp is None:
             otp = 32 * b"\x00"
         _hwc.sej.sej_set_otp(otp)

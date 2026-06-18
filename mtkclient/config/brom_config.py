@@ -400,11 +400,11 @@ class Chipconfig:
         self.description = description
         self.dacode = dacode
         self.blacklist = blacklist
-        self.blacklist_count = blacklist_count,
-        self.send_ptr = send_ptr,
-        self.ctrl_buffer = ctrl_buffer,
-        self.cmd_handler = cmd_handler,
-        self.brom_register_access = brom_register_access,
+        self.blacklist_count = blacklist_count
+        self.send_ptr = send_ptr
+        self.ctrl_buffer = ctrl_buffer
+        self.cmd_handler = cmd_handler
+        self.brom_register_access = brom_register_access
         self.meid_addr = meid_addr
         self.socid_addr = socid_addr
         self.prov_addr = prov_addr

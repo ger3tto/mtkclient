@@ -137,8 +137,8 @@ class MtkConfig(metaclass=LogBase):
             if self.peek is not None:
                 if self.chipconfig.meid_addr is not None:
                     self.meid = self.peek(self.chipconfig.meid_addr, 0x10)
-                self.meid = self.peek(0x1008ec, 0x10)
-                # self.set_meid(self.meid)
+                else:
+                    self.meid = self.peek(0x1008ec, 0x10)
         return self.meid
 
     def set_socid(self, socid):
@@ -149,7 +149,7 @@ class MtkConfig(metaclass=LogBase):
         if self.socid is None:
             if self.chipconfig.socid_addr is not None:
                 if self.peek is not None:
-                    self.socid = self.peek(0x1008ec, 0x20)
+                    self.socid = self.peek(self.chipconfig.socid_addr, 0x20)
                     self.set_socid(self.socid)
         return self.socid
 

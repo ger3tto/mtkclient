@@ -792,8 +792,6 @@ class XFlashExt(metaclass=LogBase):
                 break
         if seccfg_data is None:
             return False, "Couldn't detect existing seccfg partition. Aborting unlock."
-        if seccfg_data[:4] != pack("<I", 0x4D4D4D4D):
-            return False, "Unknown seccfg partition header. Aborting unlock."
         hwc = self.cryptosetup()
         if seccfg_data[:0xC] == b"AND_SECCFG_v":
             self.info("Detected V3 Lockstate")

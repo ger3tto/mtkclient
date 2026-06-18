@@ -255,11 +255,12 @@ class Sej(metaclass=LogBase):
         return self.read32(0x10017008)
 
     def check_timeout(self, clockvalue, timeout=200):
-        tmp = -clockvalue
         curtime = self.read32(0x10017008)
-        if curtime < clockvalue:
-            tmp = ~clockvalue
-        return tmp + self.read32(0x10017008) >= timeout * 1000 * 13
+        if curtime >= clockvalue:
+            elapsed = curtime - clockvalue
+        else:
+            elapsed = (0xFFFFFFFF - clockvalue) + 1 + curtime
+        return elapsed >= timeout * 1000 * 13
 
     def sej_samsung_keygen(self, level):
         for i in range(0, 0xA0 // 4, 0x10 // 4):
@@ -300,8 +301,10 @@ class Sej(metaclass=LogBase):
             self.reg.HACC_ACON = 3
         self.reg.HACC_SECINIT0 |= 2
         self.reg.HACC_ACON2 = 0x40000002
+        current_clock = self.get_world_clock_value()
         while self.toSigned32(self.reg.HACC_ACON2) >= 0:
-            continue
+            if self.check_timeout(current_clock, 200):
+                break
         self.reg.HACC_ACON2 = 2
         self.reg.HACC_ACON = x
         self.reg.HACC_ACONK = 0
@@ -418,13 +421,20 @@ class Sej(metaclass=LogBase):
         # 2 uses 32 byte hw derived key from sw key
         # 3 uses 32 byte hw derived key from rid
         # 4 uses custom key (customer key ?)
-        klen = 0x10
         if flag == 0x18:
-            klen = 0x10
+            klen = 0x18
         elif flag == 0x20:
             klen = 0x20
+        else:
+            klen = 0x10
         self.write32(0x109E64, klen)
-        self.reg.HACC_ACON = (self.reg.HACC_ACON & 0xFFFFFFCF) | klen
+        if klen == 0x10:
+            ackey = self.HACC_AES_128
+        elif klen == 0x18:
+            ackey = self.HACC_AES_192
+        else:
+            ackey = self.HACC_AES_256
+        self.reg.HACC_ACON = (self.reg.HACC_ACON & 0xFFFFFFCF) | ackey
         self.reg.HACC_AKEY0 = 0
         self.reg.HACC_AKEY1 = 0
         self.reg.HACC_AKEY2 = 0
@@ -491,15 +501,15 @@ class Sej(metaclass=LogBase):
         return pdst
 
     def HACC_V3_Terminate(self):
-        self.HACC_ACON2 = self.HACC_AES_CLR
-        self.HACC_AKEY0 = 0
-        self.HACC_AKEY1 = 0
-        self.HACC_AKEY2 = 0
-        self.HACC_AKEY3 = 0
-        self.HACC_AKEY4 = 0
-        self.HACC_AKEY5 = 0
-        self.HACC_AKEY6 = 0
-        self.HACC_AKEY7 = 0
+        self.reg.HACC_ACON2 = self.HACC_AES_CLR
+        self.reg.HACC_AKEY0 = 0
+        self.reg.HACC_AKEY1 = 0
+        self.reg.HACC_AKEY2 = 0
+        self.reg.HACC_AKEY3 = 0
+        self.reg.HACC_AKEY4 = 0
+        self.reg.HACC_AKEY5 = 0
+        self.reg.HACC_AKEY6 = 0
+        self.reg.HACC_AKEY7 = 0
 
     """
     def sej_aes_hw_init(self, attr, key: SymKey, sej_param=3):
@@ -670,8 +680,9 @@ class Sej(metaclass=LogBase):
             self.reg.HACC_ACON2 |= 0x40000000
             current_clock = self.get_world_clock_value()
             while True:
-                if self.reg.HACC_ACON2 < 0:
+                if self.toSigned32(self.reg.HACC_ACON2) < 0:
                     self.reg.HACC_SECINIT0_new &= 0xFFFFFFFE
+                    break
                 if self.check_timeout(current_clock, 200):
                     return -1
         return 0
@@ -679,7 +690,14 @@ class Sej(metaclass=LogBase):
     def sst_init_4g(self, attr, iv, keylen=0x10, key=None, m_sst_type=64):
         if key is None:
             key = [0, 0, 0, 0, 0, 0, 0, 0]
-        acon_setting = keylen & 0xF
+        if keylen == 0x10:
+            acon_setting = self.HACC_AES_128
+        elif keylen == 0x18:
+            acon_setting = self.HACC_AES_192
+        elif keylen == 0x20:
+            acon_setting = self.HACC_AES_256
+        else:
+            acon_setting = self.HACC_AES_128
         if iv is not None:
             acon_setting |= self.HACC_AES_CBC  # 0
 
@@ -843,7 +861,7 @@ class Sej(metaclass=LogBase):
             self.reg.HACC_ACON2 |= 0x40000000
             i = 0
             while i < 20:
-                if self.reg.HACC_ACON2 > 0x80000000:
+                if self.reg.HACC_ACON2 >= 0x80000000:
                     break
                 i += 1
             if i == 20:
