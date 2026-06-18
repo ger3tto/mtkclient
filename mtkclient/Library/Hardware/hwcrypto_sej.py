@@ -263,9 +263,10 @@ class Sej(metaclass=LogBase):
         return elapsed >= timeout * 1000 * 13
 
     def sej_samsung_keygen(self, level):
+        pattern = list(g_UnqKey_Fixed_Pattern)
         for i in range(0, 0xA0 // 4, 0x10 // 4):
-            g_UnqKey_Fixed_Pattern[i] = (g_UnqKey_Fixed_Pattern[i] & 0xFFFFFF00) | level
-        buf = b"".join(int.to_bytes(x, 4, 'little') for x in g_UnqKey_Fixed_Pattern)
+            pattern[i] = (pattern[i] & 0xFFFFFF00) | level
+        buf = b"".join(int.to_bytes(x, 4, 'little') for x in pattern)
         self.sej_samsung_special(aes256=True)
         seed = b"".join(int.to_bytes(x, 4, 'little') for x in g_UnqKey_IV)
         aes_gcm_key = self.sst_secure_algo_with_level(encrypt=True, buf=buf, m_sst_type=0x65, unlock=False,
@@ -485,12 +486,10 @@ class Sej(metaclass=LogBase):
             self.reg.HACC_ASRC2 = psrc[pos + 2]
             self.reg.HACC_ASRC3 = psrc[pos + 3]
             self.reg.HACC_ACON2 = self.HACC_AES_START
-            i = 0
-            while i < 20:
+            for wait in range(20):
                 if (self.reg.HACC_ACON2 & self.HACC_AES_RDY) != 0:
                     break
-                i += 1
-            if i == 20:
+            else:
                 self.error("SEJ Hardware seems not to be configured correctly. Results may be wrong.")
             if not noread:
                 pdst.extend(pack("<I", self.reg.HACC_AOUT0))
@@ -881,12 +880,10 @@ class Sej(metaclass=LogBase):
                 self.reg.HACC_ASRC2 = self.g_CFG_RANDOM_PATTERN[pos + 2]
                 self.reg.HACC_ASRC3 = self.g_CFG_RANDOM_PATTERN[pos + 3]
                 self.reg.HACC_ACON2 = self.HACC_AES_START # 0x1
-                i = 0
-                while i < 20:
+                for wait in range(20):
                     if (self.reg.HACC_ACON2 & self.HACC_AES_RDY) != 0:
                         break
-                    i += 1
-                if i == 20:
+                else:
                     self.error("SEJ Hardware seems not to be configured correctly. Results may be wrong.")
 
             self.reg.HACC_ACON2 = self.HACC_AES_CLR
@@ -945,20 +942,19 @@ class Sej(metaclass=LogBase):
         for pos in range(0, length, 16):
             psrc = bytes_to_dwords(data[(pos % len(data)):(pos % len(data)) + 16])
             plen = len(psrc)
-            pos = 0
-            for i in range(plen // 4):
-                self.reg.HACC_ASRC0 = psrc[pos + 0]
-                self.reg.HACC_ASRC1 = psrc[pos + 1]
-                self.reg.HACC_ASRC2 = psrc[pos + 2]
-                self.reg.HACC_ASRC3 = psrc[pos + 3]
+            offset = 0
+            for _ in range(plen // 4):
+                self.reg.HACC_ASRC0 = psrc[offset + 0]
+                self.reg.HACC_ASRC1 = psrc[offset + 1]
+                self.reg.HACC_ASRC2 = psrc[offset + 2]
+                self.reg.HACC_ASRC3 = psrc[offset + 3]
                 self.reg.HACC_ACON2 |= self.HACC_AES_START
-                i = 0
-                while i < 20:
+                for wait in range(20):
                     if (self.reg.HACC_ACON2 & self.HACC_AES_RDY) != 0:
                         break
-                    i += 1
-                if i == 20:
+                else:
                     self.error("SEJ Hardware seems not to be configured correctly. Results may be wrong.")
+                offset += 4
                 pdst.extend(pack("<I", self.reg.HACC_AOUT0))
                 pdst.extend(pack("<I", self.reg.HACC_AOUT1))
                 pdst.extend(pack("<I", self.reg.HACC_AOUT2))

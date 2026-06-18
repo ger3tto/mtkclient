@@ -53,7 +53,7 @@ class XFlashExt(metaclass=LogBase):
                                                                                   loglevel, mtk.config.gui)
         self.mtk = mtk
         self.loglevel = loglevel
-        self.__logger = self.__logger
+        pass
         self.eh = ErrorHandler()
         self.config = self.mtk.config
         self.usbwrite = self.mtk.port.usbwrite
@@ -263,7 +263,7 @@ class XFlashExt(metaclass=LogBase):
                     general_check = find_binary(da2, b"\x01\x50\x82\xE1\x7A\x00\x00\x0A\x08\x00\xA0\xE1")
                     if general_check is not None:
                         patch_gen = b"\x00\x50\xA0\xE3\x7A\x00\x00\xEA"
-                        da2patched[general_check + len(patch_gen)] = patch_gen
+                        da2patched[general_check:general_check + len(patch_gen)] = patch_gen
             else:
                 self.warning("Hash binding not patched.")
 
@@ -440,7 +440,7 @@ class XFlashExt(metaclass=LogBase):
             res = [unpack("<I", res[i:i + 4])[0] for i in range(0, len(res), 4)]
         if isinstance(res, list):
             self.debug(f"RX: {hex(addr)} -> " + bytearray(b"".join(pack("<I", val) for val in res)).hex())
-        else:
+        elif isinstance(res, int):
             self.debug(f"RX: {hex(addr)} -> {hex(res)}")
         return res
 
@@ -519,7 +519,7 @@ class XFlashExt(metaclass=LogBase):
         if self.config.chipconfig.meid_addr:
             meid = self.config.get_meid()
             otp = self.config.get_otp()
-            if meid != b"\x00" * 16:
+            if meid is not None and meid != b"\x00" * 16:
                 # self.config.set_meid(meid)
                 self.info("Generating sej rpmbkey...")
                 if rpmbkey is None:
@@ -541,7 +541,7 @@ class XFlashExt(metaclass=LogBase):
             status = self.status()
             if status == 0:
                 derivedrpmb = self.xread()
-                self.status()
+                status = self.status()
                 if status == 0:
                     self.info("Derived rpmb key: " + derivedrpmb.hex())
                     return True
@@ -598,7 +598,7 @@ class XFlashExt(metaclass=LogBase):
             if display:
                 print("SW AES Encrypted")
             swcrypt = 1
-            if len(aeskey) == 0x20:
+            if aeskey is not None and len(aeskey) == 0x20:
                 swcrypt = 1
         if attr & 0x20:
             if display:
@@ -609,7 +609,7 @@ class XFlashExt(metaclass=LogBase):
         if display:
             print("Encrypted data: " + data[0x40:].hex())
         hwc = self.cryptosetup()
-        sw = False
+        sw = bool(attr & 0x8)
         for x in range(items):
             if sw:
                 if cryptmode == sej_cryptmode.HW_ENCRYPTED:
@@ -1001,12 +1001,16 @@ class XFlashExt(metaclass=LogBase):
             else:
                 val = self.read_fuse(0xC)
                 if val is not None:
-                    val += self.read_fuse(0xD)
-                    val += self.read_fuse(0xE)
-                    val += self.read_fuse(0xF)
-                    self.info(f"HRID FUSE  : {val.hex()}")
-                    self.config.hwparam.writesetting("hrid", val.hex())
-                    retval["hrid"] = val.hex()
+                    for fuse_idx in [0xD, 0xE, 0xF]:
+                        v = self.read_fuse(fuse_idx)
+                        if v is not None:
+                            val += v
+                        else:
+                            break
+                    else:
+                        self.info(f"HRID FUSE  : {val.hex()}")
+                        self.config.hwparam.writesetting("hrid", val.hex())
+                        retval["hrid"] = val.hex()
             if "hrid" in retval:
                 hrid = bytes.fromhex(retval["hrid"])
                 hrid_md5 = hashlib.md5(hrid + hrid).hexdigest()
@@ -1032,9 +1036,9 @@ class XFlashExt(metaclass=LogBase):
             if os.path.exists("tee.json"):
                 val = json.loads(open("tee.json", "r").read())
                 self.decrypt_tee(val["filename"], bytes.fromhex(val["data"]), bytes.fromhex(val["data2"]))
-            if meid == b"":
+            if not meid:
                 meid = self.custom_read(0x1008ec, 16)
-            if meid != b"":
+            if meid:
                 # self.config.set_meid(meid)
                 self.info("Generating sej rpmbkey...")
                 self.setotp(hwc)
