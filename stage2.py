@@ -592,7 +592,11 @@ def main():
     parser_seccfg.add_argument('flag', type=str,
                                help='Option for generating: unlock or lock')
     parser_seccfg.add_argument('--sw', dest='sw', action="store_true",
-                               help='Option for generating: sw or hw')
+                               help='Use software crypto')
+    parser_seccfg.add_argument('--v3', dest='v3', action="store_true",
+                               help='Use V3 hardware crypto')
+    parser_seccfg.add_argument('--v4', dest='v4', action="store_true",
+                               help='Use V4 hardware crypto (V3 with legacy)')
 
     parser_keys = subparsers.add_parser("keys", help="Write memory")
     parser_keys.add_argument('--otp', dest='otp', type=str,
@@ -731,6 +735,10 @@ def main():
                 dec_hash = hashlib.sha256(seccfg_data).digest()
                 if args.sw:
                     enc_hash = st2.hwcrypto.sej.sej_sec_cfg_sw(dec_hash, True)
+                elif args.v3:
+                    enc_hash = st2.hwcrypto.sej.sej_sec_cfg_hw_V3(dec_hash, True)
+                elif args.v4:
+                    enc_hash = st2.hwcrypto.sej.sej_sec_cfg_hw_V3(dec_hash, True, legacy=True)
                 else:
                     enc_hash = st2.hwcrypto.sej.sej_sec_cfg_hw(dec_hash, True)
                 data = seccfg_data + enc_hash

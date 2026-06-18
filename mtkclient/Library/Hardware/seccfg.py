@@ -301,9 +301,9 @@ class SecCfgV3(metaclass=LogBase):
                     else:
                         self.hwtype = "V4"
                 else:
-                    self.hwtype = "V3"
+                    self.hwtype = "V2"
             else:
-                self.hwtype = "V2"
+                self.hwtype = "V3"
         else:
             self.hwtype = "SW"
         self.hwoffset = self.verify(err)

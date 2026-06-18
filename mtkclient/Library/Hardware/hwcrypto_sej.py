@@ -477,7 +477,7 @@ class Sej(metaclass=LogBase):
             self.reg.HACC_ACON2 = self.HACC_AES_START
             i = 0
             while i < 20:
-                if self.reg.HACC_ACON2 & self.HACC_AES_RDY != 0:
+                if (self.reg.HACC_ACON2 & self.HACC_AES_RDY) != 0:
                     break
                 i += 1
             if i == 20:
@@ -865,7 +865,7 @@ class Sej(metaclass=LogBase):
                 self.reg.HACC_ACON2 = self.HACC_AES_START # 0x1
                 i = 0
                 while i < 20:
-                    if self.reg.HACC_ACON2 & self.HACC_AES_RDY != 0:
+                    if (self.reg.HACC_ACON2 & self.HACC_AES_RDY) != 0:
                         break
                     i += 1
                 if i == 20:
@@ -936,7 +936,7 @@ class Sej(metaclass=LogBase):
                 self.reg.HACC_ACON2 |= self.HACC_AES_START
                 i = 0
                 while i < 20:
-                    if self.reg.HACC_ACON2 & self.HACC_AES_RDY != 0:
+                    if (self.reg.HACC_ACON2 & self.HACC_AES_RDY) != 0:
                         break
                     i += 1
                 if i == 20:
